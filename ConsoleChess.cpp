@@ -12,6 +12,7 @@
 // - add pawn advancements to quiescence search
 // - Add endgame king table
 // - More improvements to eval fct
+// - Improve avoidance of a stalemate for the engine
 
 const char CONV_ERROR = 127;
 

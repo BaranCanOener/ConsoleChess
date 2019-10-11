@@ -1,15 +1,16 @@
 #include "pieces.h"
 
-//GENERIC PIECE IMPLEMENTATION - parent class of all actual pieces
+//Generic piece implementation - parent class of all pieces
 Piece::Piece(Colour colour) {
 	Piece::colour = colour;
 	Piece::moveCount = 0;
 }
 
-//Returns a list of possible moves assuming the piece is at the (x, y) Position on the board
-//The board is needed to only generate moves within range of the piece (i.e.to avoid skipping)
-//Legality of moves is handled in terms of checkmate is handled by the board class itself
-//This virtual method gets overridden in child classes.
+/*Returns a list of possible moves assuming the piece is at the (x, y) Position on the board
+The board is needed to only generate moves within range of the piece (i.e.to avoid skipping for sliding pieces)
+and that do not move to an occupied square of the same color
+Legality of moves is handled in terms of checkmate is handled by the board class itself
+This virtual method gets overridden in child classes.*/
 std::vector<std::tuple<char, char>> Piece::getMoveList(Piece* squares[8][8], char x, char y) {
 	Piece::moveList.clear();
 	return Piece::moveList;

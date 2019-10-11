@@ -2,7 +2,7 @@
 #include <iostream>
 
 void ChessBoard::resetToDebugBoard() {
-	//placeholder
+	//placeholder used for debugging purposes
 }
 
 void ChessBoard::initializeOriginalSquares() {
@@ -98,8 +98,15 @@ void ChessBoard::resetBoard() {
 	ChessBoard::promotedQueens.clear();
 	ChessBoard::whiteCastled = false;
 	ChessBoard::blackCastled = false;
+	ChessBoard::plyCount = 0;
 }
 
+int ChessBoard::getPlyCount()
+{
+	return ChessBoard::plyCount;
+}
+
+/*Returns true if colour is checked*/
 bool ChessBoard::isChecked(Colour colour) {
 	for (int x = 0; x <= 7; x++) {
 		for (int y = 0; y <= 7; y++) {
@@ -120,8 +127,7 @@ bool ChessBoard::isChecked(Colour colour) {
 	return false;
 }
 
-/*RETURNS ALL POSSIBLE MOVES BY colour
-Warning: this is expensive in terms of runtime and hence not used by the engine*/
+/*RETURNS ALL POSSIBLE MOVES BY colour*/
 std::vector<std::tuple<char, char, char, char>> ChessBoard::getPossibleMoves(Colour colour) {
 	std::vector<std::tuple<char, char, char, char>> moveList;
 	for (int x = 0; x <= 7; x++) {
@@ -235,6 +241,8 @@ MoveData ChessBoard::moveTo(std::tuple<char, char> orig, std::tuple<char, char> 
 					ChessBoard::squares[3][0]->moveCount++;
 					ChessBoard::squares[2][0]->moveCount++;
 					ChessBoard::whiteCastled = true;
+					ChessBoard::plyCount++;
+					move.pieceMoved->moveCount++;
 			}
 			else move.validMove = false; //invalid castling attempt
 			return move;
@@ -259,6 +267,8 @@ MoveData ChessBoard::moveTo(std::tuple<char, char> orig, std::tuple<char, char> 
 				ChessBoard::squares[6][0]->moveCount++;
 				ChessBoard::squares[5][0]->moveCount++;
 				ChessBoard::whiteCastled = true;
+				ChessBoard::plyCount++;
+				move.pieceMoved->moveCount++;
 			}
 			else move.validMove = false; //invalid castling attempt
 			return move;
@@ -283,6 +293,8 @@ MoveData ChessBoard::moveTo(std::tuple<char, char> orig, std::tuple<char, char> 
 				ChessBoard::squares[6][7]->moveCount++;
 				ChessBoard::squares[5][7]->moveCount++;
 				ChessBoard::blackCastled = true;
+				ChessBoard::plyCount++;
+				move.pieceMoved->moveCount++;
 			}
 			else move.validMove = false; //invalid castling attempt
 			return move;
@@ -307,6 +319,8 @@ MoveData ChessBoard::moveTo(std::tuple<char, char> orig, std::tuple<char, char> 
 				ChessBoard::squares[3][7]->moveCount++;
 				ChessBoard::squares[2][7]->moveCount++;
 				ChessBoard::blackCastled = true;
+				ChessBoard::plyCount++;
+				move.pieceMoved->moveCount++;
 			}
 			else move.validMove = false; //invalid castling attempt
 			return move;
@@ -322,7 +336,7 @@ MoveData ChessBoard::moveTo(std::tuple<char, char> orig, std::tuple<char, char> 
 	//update board: set squares to new values
 	ChessBoard::squares[std::get<0>(dest)][std::get<1>(dest)] = move.pieceMoved;
 	ChessBoard::squares[std::get<0>(orig)][std::get<1>(orig)] = nullptr;
-	//DOES PLAYER CHECK HIMSELF BY THIS MOVE
+	//DOES PLAYER CHECK HIMSELF
 	if ((!ChessBoard::allowIllegalMoves) && (ChessBoard::isChecked(move.pieceMoved->colour))) {
 		//revert the king's locations
 		if (ChessBoard::kingBlackLocation == dest) {
@@ -413,11 +427,10 @@ MoveData ChessBoard::moveTo(std::tuple<char, char> orig, std::tuple<char, char> 
 			if (std::get<1>(orig) - std::get<1>(dest) == 2)
 				ChessBoard::enPassantPawn = dest;
 		}
-		//FINISH BLACK + REVERT MOVE ROUTINE + ALLOWANCE FOR EN PASSANT IN NEXT
 	}
 	else
 		ChessBoard::enPassantPawn = std::tuple<char, char>(127, 127);
-
+	ChessBoard::plyCount++;
 	move.pieceMoved->moveCount++;
 	move.validMove = true;
 	return move;
@@ -426,6 +439,7 @@ MoveData ChessBoard::moveTo(std::tuple<char, char> orig, std::tuple<char, char> 
 void ChessBoard::undoMove(MoveData move) {
 	if (move.isWhiteLRookCastling) {
 		ChessBoard::squares[3][0]->moveCount--;
+		ChessBoard::squares[2][0]->moveCount--;
 		ChessBoard::squares[0][0] = ChessBoard::squares[3][0];
 		ChessBoard::squares[4][0] = ChessBoard::squares[2][0];
 		ChessBoard::kingWhiteLocation = std::tuple<char, char>(4, 0);
@@ -435,6 +449,7 @@ void ChessBoard::undoMove(MoveData move) {
 	}
 	else if (move.isWhiteRRookCastling) {
 		ChessBoard::squares[5][0]->moveCount--;
+		ChessBoard::squares[6][0]->moveCount--;
 		ChessBoard::squares[7][0] = ChessBoard::squares[5][0];
 		ChessBoard::squares[4][0] = ChessBoard::squares[6][0];
 		ChessBoard::kingWhiteLocation = std::tuple<char, char>(4, 0);
@@ -444,6 +459,7 @@ void ChessBoard::undoMove(MoveData move) {
 	}
 	else if (move.isBlackLRookCastling) {
 		ChessBoard::squares[3][7]->moveCount--;
+		ChessBoard::squares[2][7]->moveCount--;
 		ChessBoard::squares[0][7] = ChessBoard::squares[3][7];
 		ChessBoard::squares[4][7] = ChessBoard::squares[2][7];
 		ChessBoard::kingBlackLocation= std::tuple<char, char>(4,7);
@@ -453,6 +469,7 @@ void ChessBoard::undoMove(MoveData move) {
 	}
 	else if (move.isBlackRRookCastling) {
 		ChessBoard::squares[5][7]->moveCount--;
+		ChessBoard::squares[6][7]->moveCount--;
 		ChessBoard::squares[7][7] = ChessBoard::squares[5][7];
 		ChessBoard::squares[4][7] = ChessBoard::squares[6][7];
 		ChessBoard::kingBlackLocation = std::tuple<char, char>(4, 7);
@@ -501,6 +518,7 @@ void ChessBoard::undoMove(MoveData move) {
 		ChessBoard::squares[std::get<0>(move.orig)][std::get<1>(move.orig)] = move.pieceMoved;
 	}
 	move.pieceMoved->moveCount--;
+	ChessBoard::plyCount--;
 	ChessBoard::enPassantPawn = move.prevEnPassantPawn;
 }
 
