@@ -7,4 +7,4 @@ The difference in performance are quite significant, with PythonChess running at
 
 Update Oct/2021: I implemented Zobrist key based hashtables earlier this year and the current commit contains this implementation - see the Hashtable class in board.h.
 
-![Console Chess](https://github.com/BaranCanOener/ConsoleChess/blob/master/ConsoleChess v2.PNG)
+![Console Chess](https://github.com/BaranCanOener/ConsoleChess/blob/master/ConsoleChessv2.PNG)
