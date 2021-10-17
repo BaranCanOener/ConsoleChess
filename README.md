@@ -5,6 +5,6 @@ This initially served both as a benchmark for the Python Chess script (https://g
 
 The difference in performance are quite significant, with PythonChess running at approx. 30kN /sec and ConsoleChess averaging 2.000 kN/sec on an i5-9300H. That being said, I can't rule out that the Python-version can be written more efficiently [while keeping the overall (object-oriented, rather than bitboard) approach the same].
 
-As a next step, I am planning to implement a fancier GUI, transposition tables, a better eval function and - eventually - a bitboard representation. For now, the chessboard is implemented as an array of heap-allocated objects, and moves amount to reassignment of pointers.
+Update Oct/2021: I implemented Zobrist key based hashtables earlier this year and the current commit contains this implementation - see the Hashtable class in board.h.
 
-![Console Chess](https://github.com/BaranCanOener/ConsoleChess/blob/master/ConsoleChess.PNG)
+![Console Chess](https://github.com/BaranCanOener/ConsoleChess/blob/master/ConsoleChess v2.PNG)
