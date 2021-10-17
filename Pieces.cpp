@@ -1,9 +1,20 @@
 #include "pieces.h"
+#include "algorithm"
+
+bool comp1(std::tuple<char, char, char, char, int> arg1, std::tuple<char, char, char, char, int> arg2) {
+	return std::get<4>(arg1) < std::get<4>(arg2);
+}
+
+bool comp2(std::tuple<char, char, char, char, int> arg1, std::tuple<char, char, char, char, int> arg2) {
+	return std::get<4>(arg1) > std::get<4>(arg2);
+}
 
 //Generic piece implementation - parent class of all pieces
 Piece::Piece(Colour colour) {
 	Piece::colour = colour;
 	Piece::moveCount = 0;
+	Piece::moveList.reserve(40);
+	Piece::captureMoveList.reserve(40);
 }
 
 /*Returns a list of possible moves assuming the piece is at the (x, y) Position on the board
@@ -35,6 +46,20 @@ PieceType Piece::getPieceType() {
 
 int Piece::getPositionalScore(char x, char y) {
 	return 0;
+}
+
+void Piece::setEndgameScoreboard()
+{
+}
+
+void Piece::setNormalScoreboard()
+{
+}
+
+
+std::vector<std::tuple<char, char, char, char, int>> Piece::getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y)
+{
+	return std::vector<std::tuple<char, char, char, char, int>>();
 }
 
 //PAWN IMPLEMENTATION
@@ -178,6 +203,48 @@ int Pawn::getPositionalScore(char x, char y) {
 	}
 }
 
+std::vector<std::tuple<char, char, char, char, int>> Pawn::getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y)
+{
+	Piece::captureMoveListMVV_LVA.clear();
+	if (Pawn::colour == Colour::White) {
+		if (y < 7) {
+			//Move that corresponds to taking a piece to the right
+			if ((x < 7) && squares[x + 1][y + 1] != nullptr) {
+				if (squares[x + 1][y + 1]->colour != Pawn::colour) {
+					Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 1, y + 1, squares[x + 1][y + 1]->getValue() + getValue()));
+					std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+				}
+			}
+			//Move that corresponds to taking a piece to the left
+			if ((x > 0) && squares[x - 1][y + 1] != nullptr) {
+				if (squares[x - 1][y + 1]->colour != Pawn::colour) {
+					Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 1, y + 1, squares[x - 1][y + 1]->getValue() + getValue()));
+					std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+				}
+			}
+		}
+	}
+	else if (Pawn::colour == Colour::Black) {
+		if (y > 0) {
+			//Move that corresponds to taking a piece to the right
+			if ((x < 7) && squares[x + 1][y - 1] != nullptr) {
+				if (squares[x + 1][y - 1]->colour != Pawn::colour) {
+					Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 1, y - 1, squares[x + 1][y - 1]->getValue() + getValue()));
+					std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+				}
+			}
+			//Move that corresponds to taking a piece to the left
+			if ((x > 0) && squares[x - 1][y - 1] != nullptr) {
+				if (squares[x - 1][y - 1]->colour != Pawn::colour) {
+					Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 1, y - 1, squares[x - 1][y - 1]->getValue() + getValue()));
+					std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+				}
+			}
+		}
+	}
+	return captureMoveListMVV_LVA;
+}
+
 //KNIGHT IMPLEMENTATION
 Knight::Knight(Colour colour) :Piece(colour) {
 	Piece::colour = colour;
@@ -298,6 +365,60 @@ int Knight::getPositionalScore(char x, char y) {
 	}
 }
 
+std::vector<std::tuple<char, char, char, char, int>> Knight::getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y)
+{
+	Piece::captureMoveListMVV_LVA.clear();
+	if ((x - 1 >= 0) && (y + 2 <= 7)) {
+		if ((squares[x - 1][y + 2] != nullptr) && squares[x - 1][y + 2]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 1, y + 2, squares[x - 1][y + 2]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x - 1 >= 0) && (y - 2 >= 0)) {
+		if ((squares[x - 1][y - 2] != nullptr) && squares[x - 1][y - 2]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 1, y - 2, squares[x - 1][y - 2]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x + 1 <= 7) && (y + 2 <= 7)) {
+		if ((squares[x + 1][y + 2] != nullptr) && squares[x + 1][y + 2]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 1, y + 2, squares[x + 1][y + 2]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x + 1 <= 7) && (y - 2 >= 0)) {
+		if ((squares[x + 1][y - 2] != nullptr) && squares[x + 1][y - 2]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 1, y - 2, squares[x + 1][y - 2]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x - 2 >= 0) && (y + 1 <= 7)) {
+		if ((squares[x - 2][y + 1] != nullptr) && squares[x - 2][y + 1]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 2, y + 1, squares[x - 2][y + 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x - 2 >= 0) && (y - 1 >= 0)) {
+		if ((squares[x - 2][y - 1] != nullptr) && squares[x - 2][y - 1]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 2, y - 1, squares[x - 2][y - 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x + 2 <= 7) && (y + 1 <= 7)) {
+		if ((squares[x + 2][y + 1] != nullptr) && squares[x + 2][y + 1]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 2, y + 1, squares[x + 2][y + 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x + 2 <= 7) && (y - 1 >= 0)) {
+		if ((squares[x + 2][y - 1] != nullptr) && squares[x + 2][y - 1]->colour != Knight::colour) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 2, y - 1, squares[x + 2][y - 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	return captureMoveListMVV_LVA;
+}
+
 //ROOK IMPLEMENTATION
 Rook::Rook(Colour colour) :Piece(colour) {
 	Piece::colour = colour;
@@ -399,6 +520,44 @@ int Rook::getPositionalScore(char x, char y) {
 	}
 }
 
+std::vector<std::tuple<char, char, char, char, int>> Rook::getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y)
+{
+	Piece::captureMoveListMVV_LVA.clear();
+	int i = 1;
+	while ((x - i >= 0) && (squares[x - i][y] == nullptr)) {
+		i++;
+	}
+	if ((x - i >= 0) && (squares[x - i][y]->colour != Rook::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - i, y, squares[x - i][y]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x + i <= 7) && (squares[x + i][y] == nullptr)) {
+		i++;
+	}
+	if ((x + i <= 7) && (squares[x + i][y]->colour != Rook::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + i, y, squares[x + i][y]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((y - i >= 0) && (squares[x][y - i] == nullptr)) {
+		i++;
+	}
+	if ((y - i >= 0) && (squares[x][y - i]->colour != Rook::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x, y - i, squares[x][y - i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((y + i <= 7) && (squares[x][y + i] == nullptr)) {
+		i++;
+	}
+	if ((y + i <= 7) && (squares[x][y + i]->colour != Rook::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x, y + i, squares[x][y + i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	return Piece::captureMoveListMVV_LVA;
+}
+
 //BISHOP IMPLEMENTATION
 Bishop::Bishop(Colour colour) :Piece(colour) {
 	Piece::colour = colour;
@@ -498,6 +657,44 @@ int Bishop::getPositionalScore(char x, char y) {
 	else {
 		return -Bishop::scoreBoard[y][x];
 	}
+}
+
+std::vector<std::tuple<char, char, char, char, int>> Bishop::getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y)
+{
+	Piece::captureMoveListMVV_LVA.clear();
+	int i = 1;
+	while ((x - i >= 0) && (y + i <= 7) && (squares[x - i][y + i] == nullptr)) {
+		i++;
+	}
+	if ((x - i >= 0) && (y + i <= 7) && (squares[x - i][y + i]->colour != Bishop::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - i, y + i, squares[x - i][y + i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x + i <= 7) && (y + i <= 7) && (squares[x + i][y + i] == nullptr)) {
+		i++;
+	}
+	if ((x + i <= 7) && (y + i <= 7) && (squares[x + i][y + i]->colour != Bishop::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + i, y + i, squares[x + i][y + i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x - i >= 0) && (y - i >= 0) && (squares[x - i][y - i] == nullptr)) {
+		i++;
+	}
+	if ((x - i >= 0) && (y - i >= 0) && (squares[x - i][y - i]->colour != Bishop::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - i, y - i, squares[x - i][y - i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x + i <= 7) && (y - i >= 0) && (squares[x + i][y - i] == nullptr)) {
+		i++;
+	}
+	if ((x + i <= 7) && (y - i >= 0) && (squares[x + i][y - i]->colour != Bishop::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + i, y - i, squares[x + i][y - i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	return Piece::captureMoveListMVV_LVA;
 }
 
 //QUEEN IMPLEMENTATION
@@ -665,9 +862,89 @@ int Queen::getPositionalScore(char x, char y) {
 	}
 }
 
-//KING IMPLEMENTATION - Todo: Castling
+std::vector<std::tuple<char, char, char, char, int>> Queen::getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y)
+{
+	Piece::captureMoveListMVV_LVA.clear();
+	int i = 1;
+	while ((x - i >= 0) && (squares[x - i][y] == nullptr)) {
+		i++;
+	}
+	if ((x - i >= 0) && (squares[x - i][y]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - i, y, squares[x - i][y]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x + i <= 7) && (squares[x + i][y] == nullptr)) {
+		i++;
+	}
+	if ((x + i <= 7) && (squares[x + i][y]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + i, y, squares[x + i][y]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((y - i >= 0) && (squares[x][y - i] == nullptr)) {
+		i++;
+	}
+	if ((y - i >= 0) && (squares[x][y - i]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x, y - i, squares[x][y - i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((y + i <= 7) && (squares[x][y + i] == nullptr)) {
+		i++;
+	}
+	if ((y + i <= 7) && (squares[x][y + i]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x, y + i, squares[x][y + i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x - i >= 0) && (y + i <= 7) && (squares[x - i][y + i] == nullptr)) {
+		i++;
+	}
+	if ((x - i >= 0) && (y + i <= 7) && (squares[x - i][y + i]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - i, y + i, squares[x - i][y + i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x + i <= 7) && (y + i <= 7) && (squares[x + i][y + i] == nullptr)) {
+		i++;
+	}
+	if ((x + i <= 7) && (y + i <= 7) && (squares[x + i][y + i]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + i, y + i, squares[x + i][y + i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x - i >= 0) && (y - i >= 0) && (squares[x - i][y - i] == nullptr)) {
+		i++;
+	}
+	if ((x - i >= 0) && (y - i >= 0) && (squares[x - i][y - i]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - i, y - i, squares[x - i][y - i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	i = 1;
+	while ((x + i <= 7) && (y - i >= 0) && (squares[x + i][y - i] == nullptr)) {
+		i++;
+	}
+	if ((x + i <= 7) && (y - i >= 0) && (squares[x + i][y - i]->colour != Queen::colour)) {
+		Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + i, y - i, squares[x + i][y - i]->getValue() + getValue()));
+		std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+	}
+	return Piece::captureMoveListMVV_LVA;
+}
+
+//KING IMPLEMENTATION
 King::King(Colour colour) :Piece(colour) {
 	Piece::colour = colour;
+}
+
+void King::setEndgameScoreboard()
+{
+	std::copy(&scoreBoard_endgame[0][0], &scoreBoard_endgame[0][0] + 64, &scoreBoard[0][0]);
+}
+
+void King::setNormalScoreboard()
+{
+	std::copy(&scoreBoard_normal[0][0], &scoreBoard_normal[0][0] + 64, &scoreBoard[0][0]);
 }
 
 std::vector<std::tuple<char, char>> King::getMoveList(Piece* squares[8][8], char x, char y) {
@@ -797,4 +1074,58 @@ int King::getPositionalScore(char x, char y) {
 	else {
 		return -King::scoreBoard[y][x];
 	}
+}
+
+std::vector<std::tuple<char, char, char, char, int>> King::getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y)
+{
+	Piece::captureMoveListMVV_LVA.clear();
+	if ((x - 1 >= 0) && (y + 1 <= 7)) {
+		if ((squares[x - 1][y + 1] != nullptr) && (King::colour != squares[x - 1][y + 1]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 1, y + 1, squares[x - 1][y + 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x - 1 >= 0) && (y - 1 >= 0)) {
+		if ((squares[x - 1][y - 1] != nullptr) && (King::colour != squares[x - 1][y - 1]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 1, y - 1, squares[x - 1][y - 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x + 1 <= 7) && (y + 1 <= 7)) {
+		if ((squares[x + 1][y + 1] != nullptr) && (King::colour != squares[x + 1][y + 1]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 1, y + 1, squares[x + 1][y + 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x + 1 <= 7) && (y - 1 >= 0)) {
+		if ((squares[x + 1][y - 1] != nullptr) && (King::colour != squares[x + 1][y - 1]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 1, y - 1, squares[x + 1][y - 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x + 1 <= 7)) {
+		if ((squares[x + 1][y] != nullptr) && (King::colour != squares[x + 1][y]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x + 1, y, squares[x + 1][y]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((x - 1 >= 0)) {
+		if ((squares[x - 1][y] != nullptr) && (King::colour != squares[x - 1][y]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x - 1, y, squares[x - 1][y]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((y + 1 <= 7)) {
+		if ((squares[x][y + 1] != nullptr) && (King::colour != squares[x][y + 1]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x, y + 1, squares[x][y + 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	if ((y - 1 >= 0)) {
+		if ((squares[x][y - 1] != nullptr) && (King::colour != squares[x][y - 1]->colour)) {
+			Piece::captureMoveListMVV_LVA.push_back(std::tuple<char, char, char, char, int>(x, y, x, y - 1, squares[x][y - 1]->getValue() + getValue()));
+			std::push_heap(captureMoveListMVV_LVA.begin(), captureMoveListMVV_LVA.end(), (colour == Colour::White) ? comp2 : comp1);
+		}
+	}
+	return Piece::captureMoveListMVV_LVA;
 }

@@ -8,14 +8,15 @@ enum class PieceType {None, Pawn, Rook, Bishop, Knight, Queen, King};
 //Generic piece implementation - to be overridden by child
 class Piece {
 private:
-	static const char symbol = ' '; 
-	static const int value = 0; //the material value of the piece
-	static const PieceType pieceType = PieceType::None;
+	char symbol = ' '; 
+	int value = 0; //the material value of the piece
+	PieceType pieceType = PieceType::None;
 public:
 	Colour colour;
 	int moveCount = 0;
 	std::vector<std::tuple<char, char>> moveList; //storage of all possible moves after call of getMoveList
 	std::vector<std::tuple<char, char>> captureMoveList; //storage of all possible capture moves after call of getCaptureMoveList
+	std::vector<std::tuple<char, char, char, char, int>> captureMoveListMVV_LVA; //storage of all possible capture moves after call of getCaptureMoveListMVV_LVA
 	Piece(Colour colour);
 	virtual std::vector<std::tuple<char, char>> getMoveList(Piece* squares[8][8], char x, char y);
 	virtual std::vector<std::tuple<char, char>> getCaptureMoveList(Piece* squares[8][8], char x, char y);
@@ -23,6 +24,16 @@ public:
 	virtual int getValue();
 	virtual PieceType getPieceType();
 	virtual int getPositionalScore(char x, char y);
+	virtual void setEndgameScoreboard();
+	virtual void setNormalScoreboard();
+	Piece(const Piece& rhs) { //Copy constructor
+		value = rhs.value;
+		symbol = rhs.symbol;
+		pieceType = rhs.pieceType;
+		moveCount = rhs.moveCount;
+		colour = rhs.colour;
+	};
+	virtual std::vector<std::tuple<char, char, char, char, int>> getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y);
 };
 
 class Pawn : public Piece {
@@ -48,6 +59,8 @@ public:
 	int getValue() override;
 	PieceType getPieceType() override;
 	int getPositionalScore(char x, char y) override;
+
+	std::vector<std::tuple<char, char, char, char, int>> getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y) override;
 };
 
 class Knight : public Piece {
@@ -73,6 +86,8 @@ public:
 	int getValue() override;
 	PieceType getPieceType() override;
 	int getPositionalScore(char x, char y) override;
+
+	std::vector<std::tuple<char, char, char, char, int>> getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y) override;
 };
 
 class Rook : public Piece {
@@ -97,6 +112,8 @@ public:
 	int getValue() override;
 	PieceType getPieceType() override;
 	int getPositionalScore(char x, char y) override;
+
+	std::vector<std::tuple<char, char, char, char, int>> getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y) override;
 };
 
 class Bishop : public Piece {
@@ -121,6 +138,8 @@ public:
 	int getValue() override;
 	PieceType getPieceType() override;
 	int getPositionalScore(char x, char y) override;
+
+	std::vector<std::tuple<char, char, char, char, int>> getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y) override;
 };
 
 class Queen : public Piece {
@@ -145,6 +164,8 @@ public:
 	int getValue() override;
 	PieceType getPieceType() override;
 	int getPositionalScore(char x, char y) override;
+
+	std::vector<std::tuple<char, char, char, char, int>> getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y) override;
 };
 
 class King : public Piece {
@@ -152,7 +173,7 @@ private:
 	static const char symbol = 'K';
 	static const int value = 30000;
 	static const PieceType pieceType = PieceType::King;
-	int scoreBoard[8][8] = {{-30, -40, -40, -50, -50, -40, -40, -30},
+	int scoreBoard_normal[8][8] = {{-30, -40, -40, -50, -50, -40, -40, -30},
 		{-30, -40, -40, -50, -50, -40, -40, -30},
 		{-30, -40, -40, -50, -50, -40, -40, -30},
 		{-30, -40, -40, -50, -50, -40, -40, -30},
@@ -161,12 +182,36 @@ private:
 		{20, 20, 0, 0, 0, 0, 20, 20},
 		{20, 30, 10, 0, 0, 10, 30, 20}
 	};
+	int scoreBoard_endgame[8][8] = { 
+		{0,  0,  0,  0,  0,  0,  0, 0},
+		{0, 10, 10, 10, 10, 10, 10, 0},
+		{0, 10, 20, 20, 20, 20, 10, 0},
+		{0, 10, 20, 30, 30, 20, 10, 0},
+		{0, 10, 20, 30, 30, 20, 10, 0},
+		{0, 10, 20, 20, 20, 20, 10, 0},
+		{0, 10, 10, 10, 10, 10, 10, 0},
+		{0,  0,  0,  0,  0,  0,  0, 0}
+	};
+	int scoreBoard[8][8] = {
+		{-30, -40, -40, -50, -50, -40, -40, -30},
+		{-30, -40, -40, -50, -50, -40, -40, -30},
+		{-30, -40, -40, -50, -50, -40, -40, -30},
+		{-30, -40, -40, -50, -50, -40, -40, -30},
+		{-20, -30, -30, -40, -40, -30, -30, -20},
+		{-10, -20, -20, -20, -20, -20, -20, -10},
+		{ 20,  20,   0,   0,   0,   0,  20,  20},
+		{ 20,  30,   10,  0,   0,  10,  30,  20}
+	};
 public:
 	King(Colour colour);
+	void setEndgameScoreboard() override;
+	void setNormalScoreboard() override;
 	std::vector<std::tuple<char, char>> getMoveList(Piece* squares[8][8], char x, char y) override;
 	std::vector<std::tuple<char, char>> getCaptureMoveList(Piece* squares[8][8], char x, char y) override;
 	char getSymbol() override;
 	int getValue() override;
 	PieceType getPieceType() override;
 	int getPositionalScore(char x, char y) override;
+
+	std::vector<std::tuple<char, char, char, char, int>> getCaptureMoveListMVV_LVA(Piece* squares[8][8], char x, char y) override;
 };
