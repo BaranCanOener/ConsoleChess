@@ -1,18 +1,13 @@
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <string>
 #include <windows.h>
 #include "pieces.h"
 #include "board.h"
 #include "engine.h"
-#include <ctime>
 
-//TODO:
-// - Implement hashtables
-// - add pawn advancements to quiescence search
-// - Add endgame king table
-// - More improvements to eval fct
-// - Improve avoidance of a stalemate for the engine
+#include <ctime>
 
 const char CONV_ERROR = 127;
 
@@ -86,7 +81,7 @@ std::string numberToString(int Number) {
 	return ss.str();
 }
 
-void printUpdate(Engine* engine) {
+void printUpdate(Engine* engine, ChessBoard* board) {
 	int xOrig = std::get<0>(engine->optimalTurnSequence.at(0));
 	int yOrig = std::get<1>(engine->optimalTurnSequence.at(0));
 	int xDest = std::get<2>(engine->optimalTurnSequence.at(0));
@@ -95,11 +90,11 @@ void printUpdate(Engine* engine) {
 	else std::cout << "\r" << "CALC..";
 	std::cout << "opt=[" <<
 		numToLetter(xOrig) << numberToString(yOrig + 1) << numToLetter(xDest) << numberToString(yDest + 1) <<
-		"]@val " << engine->optimalValue << " || " << int(engine->depthLimit) + int(engine->quiescenceLimit) << "d="
-		<< int(engine->depthLimit) << "n+"<< int(engine->quiescenceLimit)<<"h, " <<
-		(engine->getNodes() + engine->getQuiescenceNodes()) / 1000 << " kN="<< int(engine->getNodes()/1000) << "n+" << int(engine->getQuiescenceNodes()/1000) <<
-		 "h, " << int(((engine->getNodes() + engine->getQuiescenceNodes()) / 1000) / engine->getTimePassed()) << 
-		" kN/s, T=" << engine->getTimePassed() << "s    ";
+		"]@val " << engine->optimalValue << " || " << "Depth " << int(engine->depthLimit) + int(engine->quiescenceLimit) << "="
+		<< int(engine->depthLimit) << "n+"<< int(engine->quiescenceLimit)<<"h, " << int(board->transpos_table.getHashHits() / 1000) << "k Hash hits, "
+		<< (engine->getNodes() + engine->getQuiescenceNodes()) / 1000 << " kN="<< int(engine->getNodes()/1000) << "n+" << int(engine->getQuiescenceNodes()/1000)
+		<< "h, " << int(((engine->getNodes() + engine->getQuiescenceNodes()) / 1000) / engine->getTimePassed())
+		<< " kN/s, T=" << engine->getTimePassed() << "s    ";
 }
 
 void printBoard(ChessBoard* board, std::vector<std::tuple<char, char, char, char>>* moveList, MoveData* move) {
@@ -215,6 +210,7 @@ void printHelp() {
 	std::cout << "  'white_rnd' toggles from calculated moves by white to completely random moves" << std::endl;
 	std::cout << "  'black_rnd' does the same for black" << std::endl;
 	std::cout << "  'quiet_limit h' to set the maximum horizon search depth to h (default: h=2)" << std::endl;
+	std::cout << "  'toggle_hashtable' to enable/disable hashtables (default: enabled)" << std::endl;
 }
 
 void printHeuristicVal(Engine* engine, ChessBoard* board) {
@@ -225,7 +221,7 @@ void printHeuristicVal(Engine* engine, ChessBoard* board) {
 
 int main()
 {
-	std::cout << "CONSOLE CHESS ENGINE v2019/08/22- baran.oener@gmail.com" << std::endl;
+	std::cout << "CONSOLE CHESS ENGINE v2021/10/17- baran.oener@gmail.com" << std::endl;
 	std::cout << "kN = kilonode = 1000 positions // h = horizon nodes // n = normal nodes // White maximizes & Black minimizes valuation" << std::endl;
 	printHelp();
 	ChessBoard board;
@@ -237,13 +233,15 @@ int main()
 	int gameCount = 0;
 	int blackWins = 0;
 	int whiteWins = 0;
+	int draws = 0;
 	engine.updateFct = printUpdate;
-	float alloc_time_white = 2.5;
-	float alloc_time_black = 2.5;
+	float alloc_time_white = 1;
+	float alloc_time_black = 1;
 	bool white_rnd = false;
 	bool black_rnd = false;
 	std::string command = " ";
 	printBoard(&board, nullptr, nullptr);
+	std::cout << "Hash: " << std::hex << board.transpos_table.getHash() << std::dec << std::endl;
 	while ((command != "exit") && (command != "")){
 
 		//Prints the player whose turn it is and the heuristic valuation
@@ -313,6 +311,12 @@ int main()
 			else std::cout << "Move randomization is switched off for black" << std::endl;
 			command = "skip_print";
 		}
+		else if (command == "toggle_hashtable") {
+			engine.useHashtable = !engine.useHashtable;
+			if (engine.useHashtable) std::cout << "Hashtables enabled" << std::endl;
+			else std::cout << "Hashtables disabled" << std::endl;
+			command = "skip_print";
+		}
 		else if (command == "quiet_limit") {
 			std::cin >> engine.quiescenceLimit;
 			command = "skip_print";
@@ -373,13 +377,22 @@ int main()
 		}
 		else if (command == "engine_loop") {
 			int val;
+			int xOrig;
+			int yOrig;
+			int xDest;
+			int yDest;
 			if (colour == Colour::White) {
 				if (white_rnd)
 					engine.calculateMove_random(&board, colour);
 				else {
 					engine.timeLimit = alloc_time_white;
+
 					val = engine.calculateMove_iterativeDeepening(&board, colour);
 				}
+				xOrig = std::get<0>(engine.optimalTurnSequence.at(0));
+				yOrig = std::get<1>(engine.optimalTurnSequence.at(0));
+				xDest = std::get<2>(engine.optimalTurnSequence.at(0));
+				yDest = std::get<3>(engine.optimalTurnSequence.at(0));
 			}
 			else {
 				if (black_rnd) {
@@ -387,13 +400,15 @@ int main()
 				}
 				else {
 					engine.timeLimit = alloc_time_black;
+
 					val = engine.calculateMove_iterativeDeepening(&board, colour);
 				}
+				xOrig = std::get<0>(engine.optimalTurnSequence.at(0));
+				yOrig = std::get<1>(engine.optimalTurnSequence.at(0));
+				xDest = std::get<2>(engine.optimalTurnSequence.at(0));
+				yDest = std::get<3>(engine.optimalTurnSequence.at(0));
 			}
-			int xOrig = std::get<0>(engine.optimalTurnSequence.at(0));
-			int yOrig = std::get<1>(engine.optimalTurnSequence.at(0));
-			int xDest = std::get<2>(engine.optimalTurnSequence.at(0));
-			int yDest = std::get<3>(engine.optimalTurnSequence.at(0));
+
 			move = board.moveTo(std::tuple<char, char>(xOrig, yOrig), std::tuple<char, char>(xDest, yDest));
 			if (move.validMove) {
 				if (((colour == Colour::White) && (white_rnd)) || ((colour == Colour::Black) && (black_rnd)))
@@ -403,23 +418,41 @@ int main()
 					std::cout << std::endl;
 				printBoard(&board, nullptr, &move);
 				printMoveType(&move);
+				std::cout << "Hash: " << std::hex << board.transpos_table.getHash() << std::dec << ", Endgame: " << engine.isEndgame(&board) << std::endl;
 				colour = switchColour(colour);
 				moveCount++;
 			}
 			if (moveCount > MAX_MOVE_COUNT) {
-				std::cout << "Move limit of "<< MAX_MOVE_COUNT << " reached, resetting board." << std::endl;
+				std::cout << "Move limit of "<< MAX_MOVE_COUNT << " reached." << std::endl;
+				draws++;
+				std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << ", Draws: " << draws << std::endl;
+				std::cout << "Resetting Board." << std::endl;
 				board.resetBoard();
 				moveCount = 1;
 				colour = Colour::White;
 				printBoard(&board, nullptr, nullptr);
-				command = " ";
+				//DEBUG
+				//command = " ";
+			}
+			if (board.drawBy50Moves()) {
+				std::cout << "Draw by 50-move-rule."<< std::endl;
+				draws++;
+				std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << ", Draws: " << draws << std::endl;
+				std::cout << "Resetting Board." << std::endl;
+				board.resetBoard();
+				moveCount = 1;
+				colour = Colour::White;
+				printBoard(&board, nullptr, nullptr);
+
+				//DEBUG
+				//command = " ";
 			}
 		}
 		else if (command == "getcapturemoves") {
-			printBoard(&board, &board.getPossibleCaptures(colour), nullptr);
+			//printBoard(&board, &board.getPossibleCaptures(colour), nullptr);
 		}
 		else if (command == "getmoves") {
-			printBoard(&board, &board.getPossibleMoves(colour), nullptr);
+			//printBoard(&board, &board.getPossibleMoves(colour), nullptr);
 		}
 		else if (command == "isattacked") {
 			std::cin >> command;
@@ -457,34 +490,64 @@ int main()
 		else std::cout << "Invalid command" << std::endl;
 
 		//Evaluate the game state for checks & checkmates
-		if (board.getPossibleMoves(Colour::White).empty()) {
-			std::cout << "White is checkmate!" << std::endl;
-			blackWins++;
-			printBoard(&board, &board.getPossibleMoves(Colour::Black), nullptr);
-			std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << std::endl;
-			std::cout << "Resetting Board." << std::endl;
-			board.resetBoard();
-			colour = Colour::White;
-			printBoard(&board,nullptr, nullptr);
-			moveCount = 1;
-			command = " ";
+		if ((colour == Colour::White) && (board.getPossibleMoves(Colour::White).empty())) {
+			if (board.isChecked(Colour::White)) {
+				std::cout << "White is checkmate!" << std::endl;
+				blackWins++;
+				//printBoard(&board, &board.getPossibleMoves(Colour::Black), nullptr);
+				std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << ", Draws: " << draws << std::endl;
+				std::cout << "Resetting Board." << std::endl;
+				board.resetBoard();
+				colour = Colour::White;
+				printBoard(&board, nullptr, nullptr);
+				std::cout << "Hash: " << std:: hex << board.transpos_table.getHash() << std::dec << std::endl;
+				moveCount = 1;
+				//DEBUG
+				//command = " ";
+			}
+			else {
+				board.resetBoard();
+				std::cout << "Draw!" << std::endl;
+				draws++;
+				std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << ", Draws: " << draws << std::endl;
+				std::cout << "Resetting Board." << std::endl;
+				colour = Colour::White;
+				printBoard(&board, nullptr, nullptr);
+				std::cout << "Hash: " << std::hex << board.transpos_table.getHash() << std::dec << std::endl;
+				moveCount = 1;
+			}
 		}
-		if (board.isChecked(Colour::White)) {
+		else if (board.isChecked(Colour::White)) {
 			std::cout << "White is checked" << std::endl;
 		}
-		if (board.getPossibleMoves(Colour::Black).empty()) {
-			std::cout << "Black is checkmate!" << std::endl;
-			whiteWins++;
-			printBoard(&board, &board.getPossibleMoves(Colour::White), nullptr);
-			std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << std::endl;
-			std::cout << "Resetting Board." << std::endl;
-			board.resetBoard();
-			colour = Colour::White;
-			printBoard(&board, nullptr, nullptr);
-			moveCount = 1;
-			command = " ";
+		if ((colour == Colour::Black) && (board.getPossibleMoves(Colour::Black).empty())) {
+			if (board.isChecked(Colour::Black)) {
+				std::cout << "Black is checkmate!" << std::endl;
+				whiteWins++;
+				//printBoard(&board, &board.getPossibleMoves(Colour::White), nullptr);
+				std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << ", Draws: " << draws << std::endl;
+				std::cout << "Resetting Board." << std::endl;
+				board.resetBoard();
+				colour = Colour::White;
+				printBoard(&board, nullptr, nullptr);
+				std::cout << "Hash: " << std::hex << board.transpos_table.getHash() << std::dec << std::endl;
+				moveCount = 1;
+				//DEBUG
+				//command = " ";
+			}
+			else {
+				board.resetBoard();
+				std::cout << "Draw!" << std::endl;
+				draws++;
+				std::cout << "White wins:  " << whiteWins << ", Black wins: " << blackWins << ", Draws: " << draws << std::endl;
+				std::cout << "Resetting Board." << std::endl;
+				colour = Colour::White;
+				printBoard(&board, nullptr, nullptr);
+				std::cout << "Hash: " << std::hex << board.transpos_table.getHash() << std::dec << std::endl;
+				moveCount = 1;
+			}
 		}
-		if (board.isChecked(Colour::Black)) {
+		else if (board.isChecked(Colour::Black)) {
 			std::cout << "Black is checked" << std::endl;
 		}
 	}
